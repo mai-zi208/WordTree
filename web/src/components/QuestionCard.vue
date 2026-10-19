@@ -43,12 +43,15 @@ const available = computed(() =>
     </template>
 
     <template v-else>
-      <button v-for="(opt, oi) in item.options" :key="opt" type="button" class="opt"
+      <button v-for="(opt, oi) in item.options" :key="oi" type="button" class="opt"
               :class="{ right: asked && opt === item.answer,
                         missed: asked && oi === picked && opt !== item.answer }"
               :disabled="asked" @click="$emit('pick', oi)">
         <span class="key" aria-hidden="true">{{ String.fromCharCode(65 + oi) }}</span>
-        <span class="txt" :lang="item.kind === 'gloss' ? null : 'en'">{{ opt }}</span>
+        <span class="txt" :lang="item.kind === 'gloss' ? null : 'en'">{{ opt }}
+          <small v-if="asked && item.optionNotes" class="ogloss"
+                 :lang="item.kind === 'gloss' ? 'en' : null">{{ item.optionNotes[oi] }}</small>
+        </span>
         <svg v-if="asked && opt === item.answer" class="mark" viewBox="0 0 20 20" fill="none"
              stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
              aria-hidden="true"><path d="M4 10.5l4 4 8-9" /></svg>
@@ -62,10 +65,12 @@ const available = computed(() =>
   <div v-if="asked && item.kind === 'order'" class="card">
     <div class="tag">参考答案</div>
     <div class="ansnote"><b lang="en">{{ item.answer }}</b></div>
+    <div v-if="item.zh" class="ansnote zh">{{ item.zh }}</div>
     <div class="ansnote muted mine">{{ correct ? "你拼对了。" : `你拼的是：${placedText}` }}</div>
   </div>
   <div v-else-if="asked" class="card">
     <div class="tag">正确答案 {{ item.answer }}</div>
     <div class="muted">{{ item.hint }}</div>
+    <div v-if="item.zh" class="muted zhline">{{ item.zh }}</div>
   </div>
 </template>

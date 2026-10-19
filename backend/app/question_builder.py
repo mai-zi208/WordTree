@@ -26,9 +26,23 @@ def kinds_for(word: dict) -> list[str]:
     return kinds
 
 
-def _word_options(word: dict, siblings: list[dict]) -> list[str]:
-    distractors = [w["word"] for w in siblings if w["word"] != word["word"]]
-    return shuffle(distractors)[:3] + [word["word"]]
+def _word_options(word: dict, siblings: list[dict]) -> tuple[list[str], list[str]]:
+    """干扰项取同族词。返回 (选项, 与选项下标对齐的中文释义)。"""
+    picks = shuffle([w for w in siblings if w["word"] != word["word"]])[:3] + [word]
+    return [w["word"] for w in picks], [w["gloss"] for w in picks]
+
+
+def _gloss_options(word: dict, siblings: list[dict]) -> tuple[list[str], list[str]]:
+    """考释义时选项反过来：中文当选项，英文原词当答案页的注解。"""
+    picks = shuffle([w for w in siblings if w["word"] != word["word"]])[:3] + [word]
+    return [w["gloss"] for w in picks], [w["word"] for w in picks]
+
+
+def _sentence_zh(word: dict) -> Optional[str]:
+    """例句恰好就是内容句时，把它的中文翻译带上，答题后一起显示。"""
+    if word["content_type"] == "sentence" and word["content_en"] == word["example"]:
+        return word["content_zh"]
+    return None
 
 
 def _hint(kind: str, word: dict) -> str:
@@ -53,22 +67,21 @@ def build_item(kind: str, word: dict, family: dict) -> Optional[dict]:
     }
     if kind == "gloss":
         item["stem"]["word"] = word["word"]
-        item["options"] = shuffle(
-            [w["gloss"] for w in siblings if w["word"] != word["word"]])[:3] + [word["gloss"]]
+        item["options"], item["optionNotes"] = _gloss_options(word, siblings)
         item["answer"] = word["gloss"]
     elif kind == "meme":
         item["stem"]["text"] = word["meme"]
-        item["options"] = _word_options(word, siblings)
+        item["options"], item["optionNotes"] = _word_options(word, siblings)
         item["answer"] = word["word"]
     elif kind == "picture":
         item["stem"]["img"] = as_url(word["img"])
         item["stem"]["imgAlt"] = word["img_zh"]
-        item["options"] = _word_options(word, siblings)
+        item["options"], item["optionNotes"] = _word_options(word, siblings)
         item["answer"] = word["word"]
     elif kind == "cloze":
         item["stem"]["text"] = word["example"].replace(word["blank"], "______")
         item["stem"]["note"] = "句中这个词已变形，按词义选原形"
-        item["options"] = _word_options(word, siblings)
+        item["options"], item["optionNotes"] = _word_options(word, siblings)
         item["answer"] = word["word"]
     elif kind == "order":
         item["stem"]["note"] = "按顺序点下面的词块，拼出这句英文"
@@ -82,6 +95,8 @@ def build_item(kind: str, word: dict, family: dict) -> Optional[dict]:
     else:
         return None
     item["hint"] = _hint(kind, word)
+    if zh := _sentence_zh(word):
+        item["zh"] = zh
     return item
 
 

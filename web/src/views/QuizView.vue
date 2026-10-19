@@ -63,11 +63,25 @@ async function onRate(key) {
     router.push({ name: summary ? "done" : "home" });
   }
 }
+
+function leave() {
+  const done = state.session?.results.length ?? 0;
+  if (done && !confirm(`已经答了 ${done} 题还没存档，现在返回这些进度就丢了。还要返回吗？`)) return;
+  const familyId = state.session?.familyId;
+  router.push(familyId ? { name: "family", params: { id: familyId } } : { name: "home" });
+}
 </script>
 
 <template>
   <main v-if="item" class="enter">
     <div class="qhead">
+      <button class="backbtn" type="button" @click="leave">
+        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12.5 4l-6 6 6 6" />
+        </svg>
+        返回
+      </button>
       <h1>{{ state.session.mode === "review" ? "复习" : "练习" }}</h1>
       <span class="count" lang="en">{{ index + 1 }} / {{ items.length }}</span>
     </div>

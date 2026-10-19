@@ -2,8 +2,11 @@
 // 图片由后端 /assets 提供，绑成动态值，避免 Vite 把它当本地模块去解析。
 const HERO_IMG = "/assets/header.png";
 
-defineProps({ settingsOpen: { type: Boolean, default: false } });
-defineEmits(["open-settings"]);
+defineProps({
+  settingsOpen: { type: Boolean, default: false },
+  generateOpen: { type: Boolean, default: false },
+});
+defineEmits(["open-settings", "open-generate"]);
 </script>
 
 <template>
@@ -24,6 +27,14 @@ defineEmits(["open-settings"]);
         <circle cx="10" cy="10" r="3.1" />
         <path d="M10 1.9v2M10 16.1v2M18.1 10h-2M3.9 10h-2M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4M15.7 15.7l-1.4-1.4M5.7 5.7L4.3 4.3" />
       </svg>
+    </button>
+    <button class="addbtn" type="button" :class="{ on: generateOpen }"
+            :aria-expanded="generateOpen" @click="$emit('open-generate')">
+      <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M10 4v12M4 10h12" />
+      </svg>
+      新增词族
     </button>
   </div>
 </template>
