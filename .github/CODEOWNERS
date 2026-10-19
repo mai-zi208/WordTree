@@ -1,0 +1,9 @@
+# 占位文件：当前未启用任何 code owner 规则，GitHub 不会因此拦截合并。
+# 需要时再在此声明负责人，例如：
+#   *                @mai-zi208
+#   /backend/        @mai-zi208
+#
+# 同级目录的后续扩展位置：
+#   .github/workflows/      CI（前端 build + 后端冒烟）
+#   .github/ISSUE_TEMPLATE/ 议题模板
+#   .github/PULL_REQUEST_TEMPLATE.md
