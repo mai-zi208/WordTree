@@ -1,7 +1,8 @@
 """Data layer: every SQL the app needs, no business rules here."""
 from __future__ import annotations
 
-from typing import Optional
+import json
+from typing import Any, Optional
 
 from . import scheduling
 from .db import session
@@ -140,24 +141,29 @@ def next_dates_for(family_id: int) -> list[str]:
         return [r["d"] for r in rows]
 
 
-def create_job(job_id: str, keyword: str) -> None:
+def create_job(job_id: str, keyword: str, kind: str = "family", total: int = 0) -> None:
     with session() as conn:
-        conn.execute("INSERT INTO generation_jobs(id, status, keyword) VALUES(?,?,?)",
-                     (job_id, "pending", keyword))
+        conn.execute("INSERT INTO generation_jobs(id, status, kind, keyword, total) "
+                     "VALUES(?,?,?,?,?)", (job_id, "pending", kind, keyword, total))
 
 
-def succeed_job(job_id: str, family_id: int) -> None:
+def _dump(result: Any) -> Optional[str]:
+    return None if result is None else json.dumps(result, ensure_ascii=False)
+
+
+def succeed_job(job_id: str, family_id: Optional[int] = None, result: Any = None) -> None:
     with session() as conn:
         conn.execute(
-            "UPDATE generation_jobs SET status='succeeded', family_id=?, "
-            "error=NULL, updated_at=datetime('now') WHERE id=?",
-            (family_id, job_id))
+            "UPDATE generation_jobs SET status='succeeded', family_id=?, done=total, "
+            "result_json=?, error=NULL, updated_at=datetime('now') WHERE id=?",
+            (family_id, _dump(result), job_id))
 
 
-def fail_job(job_id: str, error: str) -> None:
+def fail_job(job_id: str, error: str, result: Any = None) -> None:
     with session() as conn:
-        conn.execute("UPDATE generation_jobs SET status='failed', error=?, "
-                     "updated_at=datetime('now') WHERE id=?", (error[:500], job_id))
+        conn.execute(
+            "UPDATE generation_jobs SET status='failed', error=?, result_json=?, "
+            "updated_at=datetime('now') WHERE id=?", (error[:500], _dump(result), job_id))
 
 
 def running_job(job_id: str) -> None:
@@ -166,8 +172,16 @@ def running_job(job_id: str) -> None:
                      "WHERE id=?", (job_id,))
 
 
+def job_progress(job_id: str, done: int, result: Any = None) -> None:
+    """Batch jobs publish per-family progress while they run, so the UI can poll it."""
+    with session() as conn:
+        conn.execute("UPDATE generation_jobs SET done=?, result_json=?, "
+                     "updated_at=datetime('now') WHERE id=?", (done, _dump(result), job_id))
+
+
 def get_job(job_id: str) -> Optional[dict]:
     with session() as conn:
-        rows = _rows(conn, "SELECT id, status, keyword, family_id, error, created_at, updated_at "
+        rows = _rows(conn, "SELECT id, status, kind, keyword, family_id, total, done, "
+                           "result_json, error, created_at, updated_at "
                            "FROM generation_jobs WHERE id=?", (job_id,))
         return rows[0] if rows else None

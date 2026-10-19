@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db, seed
-from .routers import families, generation, study
+from .routers import families, generation, settings, study
 
 
 @asynccontextmanager
@@ -25,6 +25,7 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
 app.include_router(families.router)
 app.include_router(study.router)
 app.include_router(generation.router)
+app.include_router(settings.router)
 
 if config.ASSETS_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=config.ASSETS_DIR), name="assets")

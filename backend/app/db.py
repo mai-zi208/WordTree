@@ -47,15 +47,30 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 CREATE TABLE IF NOT EXISTS generation_jobs (
-  id         TEXT PRIMARY KEY,
-  status     TEXT NOT NULL CHECK (status IN ('pending','running','succeeded','failed')),
-  keyword    TEXT NOT NULL,
-  family_id  INTEGER REFERENCES families(id) ON DELETE SET NULL,
-  error      TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  id          TEXT PRIMARY KEY,
+  status      TEXT NOT NULL CHECK (status IN ('pending','running','succeeded','failed')),
+  kind        TEXT NOT NULL DEFAULT 'family',
+  keyword     TEXT NOT NULL,
+  family_id   INTEGER REFERENCES families(id) ON DELETE SET NULL,
+  total       INTEGER NOT NULL DEFAULT 0,
+  done        INTEGER NOT NULL DEFAULT 0,
+  result_json TEXT,
+  error       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """
+
+# 老库里 generation_jobs 已经建好了，CREATE TABLE IF NOT EXISTS 不会补列，只能逐列 ALTER。
+JOB_COLUMNS = (("kind", "TEXT NOT NULL DEFAULT 'family'"), ("total", "INTEGER NOT NULL DEFAULT 0"),
+               ("done", "INTEGER NOT NULL DEFAULT 0"), ("result_json", "TEXT"))
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(generation_jobs)")}
+    for name, decl in JOB_COLUMNS:
+        if name not in have:
+            conn.execute(f"ALTER TABLE generation_jobs ADD COLUMN {name} {decl}")
 
 
 def connect() -> sqlite3.Connection:
@@ -83,3 +98,4 @@ def session() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with session() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)

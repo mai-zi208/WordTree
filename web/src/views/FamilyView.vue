@@ -1,7 +1,6 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import MorphTree from "../components/MorphTree.vue";
 import WordCard from "../components/WordCard.vue";
 import * as api from "../api";
 import { familyById, human, startSession, state } from "../store";
@@ -10,6 +9,7 @@ const props = defineProps({ id: { type: String, required: true } });
 const router = useRouter();
 const fallback = ref(null);
 const missing = ref(false);
+const zoomed = ref(null);
 
 const family = computed(() => familyById(props.id) || fallback.value);
 const freshCount = computed(() => family.value ? family.value.total - family.value.learned : 0);
@@ -31,6 +31,15 @@ async function start(pool) {
     router.push({ name: "quiz" });
   }
 }
+
+function onKey(e) {
+  if (e.key === "Escape") zoomed.value = null;
+}
+watch(zoomed, (word) => {
+  if (word) window.addEventListener("keydown", onKey);
+  else window.removeEventListener("keydown", onKey);
+});
+onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 </script>
 
 <template>
@@ -47,21 +56,22 @@ async function start(pool) {
       </div>
     </div>
 
-    <h2>词族拆解</h2>
-    <MorphTree :family="family" />
-
-    <h2>逐词细看</h2>
-    <WordCard v-for="w in family.words" :key="w.word" :word="w" />
-
-    <button class="big" type="button" :disabled="state.busy" @click="start(freshCount ? 'fresh' : 'all')">
-      {{ freshCount ? `开始：先学 ${freshCount} 个新词` : "整族重过一遍" }}
-    </button>
-    <div class="row" v-if="family.learned">
-      <button class="btn" type="button" :disabled="state.busy" @click="start('due')">只练到期</button>
-      <button class="btn" type="button" :disabled="state.busy" @click="start('weak')">练习不熟</button>
+    <h2>这一族的词</h2>
+    <p class="muted note-lead">每行都带词根拆解，点一下展开联想、例句和简笔画。</p>
+    <div class="wordlist">
+      <WordCard v-for="w in family.words" :key="w.word" :word="w" :root="family.root"
+                @zoom="zoomed = $event" />
     </div>
-    <div class="row">
-      <button class="btn ghost" type="button" @click="router.push({ name: 'home' })">← 回便签墙</button>
+
+    <div class="actionbar">
+      <button class="big" type="button" :disabled="state.busy" @click="start(freshCount ? 'fresh' : 'all')">
+        {{ freshCount ? `开始：先学 ${freshCount} 个新词` : "整族重过一遍" }}
+      </button>
+      <div class="row">
+        <button v-if="family.learned" class="btn" type="button" :disabled="state.busy" @click="start('due')">只练到期</button>
+        <button v-if="family.learned" class="btn" type="button" :disabled="state.busy" @click="start('weak')">练习不熟</button>
+        <button class="btn ghost" type="button" @click="router.push({ name: 'home' })">← 便签墙</button>
+      </div>
     </div>
   </main>
 
@@ -71,4 +81,14 @@ async function start(pool) {
       <button class="btn ghost" type="button" @click="router.push({ name: 'home' })">← 回便签墙</button>
     </div>
   </main>
+
+  <Teleport to="body">
+    <div v-if="zoomed" class="lightbox" @click.self="zoomed = null">
+      <figure>
+        <img :src="zoomed.img" width="1024" height="1024" decoding="async"
+             :alt="zoomed.imgZh || zoomed.word + ' 的简笔画'">
+        <figcaption v-if="zoomed.imgZh">{{ zoomed.imgZh }}</figcaption>
+      </figure>
+    </div>
+  </Teleport>
 </template>

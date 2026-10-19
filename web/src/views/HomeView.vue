@@ -1,11 +1,14 @@
 <script setup>
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import GeneratePanel from "../components/GeneratePanel.vue";
 import HeroMasthead from "../components/HeroMasthead.vue";
+import SettingsPanel from "../components/SettingsPanel.vue";
 import StickyNoteWall from "../components/StickyNoteWall.vue";
 import { loadFamilies, resetProgress, startSession, state } from "../store";
 
 const router = useRouter();
+const settingsOpen = ref(false);
 
 async function review() {
   if (await startSession({ mode: "review" })) router.push({ name: "quiz" });
@@ -26,7 +29,7 @@ async function clear() {
 </script>
 
 <template>
-  <HeroMasthead />
+  <HeroMasthead :settings-open="settingsOpen" @open-settings="settingsOpen = !settingsOpen" />
   <main class="enter">
     <div class="tip" :class="{ idle: !state.dueTotal }">
       <template v-if="state.dueTotal">
@@ -39,10 +42,12 @@ async function clear() {
     <p v-if="!state.loaded && !state.error" class="loading">正在读词库……</p>
     <StickyNoteWall v-else :families="state.families" @open="open" />
 
-    <GeneratePanel @created="created" />
+    <GeneratePanel @created="created" @need-settings="settingsOpen = true" />
 
     <div class="row">
       <button class="btn ghost" type="button" @click="clear">清空进度</button>
     </div>
   </main>
+
+  <SettingsPanel :open="settingsOpen" @close="settingsOpen = false" />
 </template>

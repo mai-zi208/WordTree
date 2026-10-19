@@ -40,3 +40,29 @@ class CommitRequest(Request):
 class GenerateRequest(Request):
     keyword: str = Field(min_length=1, max_length=40)
     words: int = Field(default=5, ge=3, le=6)
+
+
+class SettingsRequest(Request):
+    """None 表示这一项不改；空字符串表示清掉。密钥只写进 backend/.env，不回传前端。"""
+    base_url: Optional[str] = Field(default=None, max_length=200)
+    model: Optional[str] = Field(default=None, max_length=80)
+    api_key: Optional[str] = Field(default=None, max_length=300)
+    verify: bool = False
+
+    def as_env(self) -> dict[str, Optional[str]]:
+        return {"DEEPSEEK_BASE_URL": self.base_url, "DEEPSEEK_MODEL": self.model,
+                "DEEPSEEK_API_KEY": self.api_key}
+
+
+class GroupRequest(Request):
+    text: str = Field(min_length=2, max_length=8000)
+    max_families: int = Field(default=6, ge=1, le=12)
+
+
+class BatchGroup(Request):
+    root: str = Field(min_length=2, max_length=24)
+    words: list[str] = Field(min_length=1, max_length=12)
+
+
+class BatchRequest(Request):
+    groups: list[BatchGroup] = Field(min_length=1, max_length=8)
