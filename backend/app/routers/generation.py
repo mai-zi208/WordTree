@@ -1,4 +1,4 @@
-"""Route layer: ask the agent layer for new families, polled by job id."""
+"""路由层：生成词族"""
 from __future__ import annotations
 
 import json
@@ -22,7 +22,7 @@ def _new_job(kind: str, label: str, total: int = 0) -> str:
     repositories.create_job(job_id, label, kind, total)
     return job_id
 
-
+# 单族：running_job → generate_family → store → succeed_job / fail_job
 def run_job(job_id: str, keyword: str, words: int) -> None:
     repositories.running_job(job_id)
     try:
@@ -34,7 +34,7 @@ def run_job(job_id: str, keyword: str, words: int) -> None:
     except Exception as exc:
         repositories.fail_job(job_id, str(exc))
 
-
+# 分组
 def run_group_job(job_id: str, text: str, max_families: int) -> None:
     repositories.running_job(job_id)
     try:
@@ -42,7 +42,7 @@ def run_group_job(job_id: str, text: str, max_families: int) -> None:
     except Exception as exc:
         repositories.fail_job(job_id, str(exc))
 
-
+# 批量生成
 def run_batch_job(job_id: str, groups: list[dict]) -> None:
     """Generate the chosen groups one by one; one bad group doesn't kill the rest."""
     repositories.running_job(job_id)
@@ -72,15 +72,15 @@ def run_batch_job(job_id: str, groups: list[dict]) -> None:
     else:
         repositories.fail_job(job_id, f"{len(results)} 个词族都没生成成功", {"results": results})
 
-
+# 给个词根，生成一族
 @router.post("")
 def start(body: schemas.GenerateRequest, background: BackgroundTasks) -> dict:
-    _need_llm()
-    job_id = _new_job("family", body.keyword)
+    _need_llm()   #没配key直接报错
+    job_id = _new_job("family", body.keyword)   #建job行、拿id
     background.add_task(run_job, job_id, body.keyword, body.words)
     return {"jobId": job_id, "status": "pending", "kind": "family", "keyword": body.keyword}
 
-
+# 粘一批词，先分组（不落库）
 @router.post("/group")
 def start_group(body: schemas.GroupRequest, background: BackgroundTasks) -> dict:
     _need_llm()
@@ -89,7 +89,7 @@ def start_group(body: schemas.GroupRequest, background: BackgroundTasks) -> dict
     background.add_task(run_group_job, job_id, body.text, body.max_families)
     return {"jobId": job_id, "status": "pending", "kind": "group", "keyword": label}
 
-
+# 把分红的组逐条生成入库
 @router.post("/batch")
 def start_batch(body: schemas.BatchRequest, background: BackgroundTasks) -> dict:
     _need_llm()
@@ -99,7 +99,7 @@ def start_batch(body: schemas.BatchRequest, background: BackgroundTasks) -> dict
     return {"jobId": job_id, "status": "pending", "kind": "batch",
             "keyword": label, "total": len(body.groups)}
 
-
+# 轮询端点
 @router.get("/{job_id}")
 def status(job_id: str) -> dict:
     job = repositories.get_job(job_id)

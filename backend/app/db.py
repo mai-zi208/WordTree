@@ -1,4 +1,4 @@
-"""SQLite access: one file, no ORM, WAL so the dev server can read while writing."""
+"""SQLite数据访问层：单个数据库文件，不用ORM，开WAL，只负责连接+建表+迁移"""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from typing import Iterator
 
 from . import config
 
+
+# 1、四张表：词族主表、族内单词、复习进度、异步生成任务表
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS families (
   id           INTEGER PRIMARY KEY,
@@ -61,10 +63,11 @@ CREATE TABLE IF NOT EXISTS generation_jobs (
 );
 """
 
+
+# 2、迁移兜底
 # 老库里 generation_jobs 已经建好了，CREATE TABLE IF NOT EXISTS 不会补列，只能逐列 ALTER。
 JOB_COLUMNS = (("kind", "TEXT NOT NULL DEFAULT 'family'"), ("total", "INTEGER NOT NULL DEFAULT 0"),
                ("done", "INTEGER NOT NULL DEFAULT 0"), ("result_json", "TEXT"))
-
 
 def _migrate(conn: sqlite3.Connection) -> None:
     have = {r["name"] for r in conn.execute("PRAGMA table_info(generation_jobs)")}
@@ -73,6 +76,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE generation_jobs ADD COLUMN {name} {decl}")
 
 
+# 3、每个操作新建一个连接
 def connect() -> sqlite3.Connection:
     config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(config.DB_PATH, timeout=20)
@@ -82,7 +86,8 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
-@contextmanager
+# 4、初始化
+@contextmanager   #上下文管理器
 def session() -> Iterator[sqlite3.Connection]:
     conn = connect()
     try:
@@ -94,7 +99,7 @@ def session() -> Iterator[sqlite3.Connection]:
     finally:
         conn.close()
 
-
+# 服务启动时建表并跑迁移
 def init_db() -> None:
     with session() as conn:
         conn.executescript(SCHEMA)

@@ -1,4 +1,4 @@
-"""Agent layer: ask the model for a new word family, validate it, store it."""
+"""智能体层：负责"向模型要词族内容 → 严格校验 → 修复重试 → 归一化入库"这一整条链"""
 from __future__ import annotations
 
 import re
@@ -68,6 +68,7 @@ GROUP_SYSTEM = """你是英语词族记忆卡的整理者。用户会粘一批�
 
 
 def _errors(fam: dict, expected_words: int, allowed: Optional[list[str]] = None) -> list[str]:
+    """校验规则：保证单词是有效的"""
     errs: list[str] = []
     root = str(fam.get("root", "")).lower()
     if not re.fullmatch(r"[a-z]{2,}", root):
@@ -171,7 +172,7 @@ def _normalize(fam: dict) -> dict:
         })
     return out
 
-
+# 生成/整理一个词族，返回归一化dict：complete_json → _errors → _normalize，拿到结果先校验，再归一
 def generate_family(keyword: str, words: int = 5,
                     allowed: Optional[list[str]] = None) -> dict:
     """Ask for a family on `keyword`, repair it once if validation fails, then return it.
@@ -188,17 +189,17 @@ def generate_family(keyword: str, words: int = 5,
                 f"如果「{keyword}」不是常见拉丁/希腊词根，就换成最接近的常用词根并在 family 里写明。"
                 f"words 数组必须正好 {words} 个。")
     problems: list[str] = []
-    for temperature in (0.9, 0.3):
+    for temperature in (0.9, 0.3):   #温度从0.9降到0.3，最多两轮。首轮高温保多样性，失败后转低温走确认。
         raw = llm.complete_json(SYSTEM, _user_with_errors(user, problems), temperature)
         if not isinstance(raw, dict):
             problems = ["返回值必须是一个 JSON 对象"]
             continue
-        problems = _errors(raw, expected, allowed)
-        if not problems:
+        problems = _errors(raw, expected, allowed)   #第一轮失败就把失败原因拼进第二轮提示词里
+        if not problems:   #入库前查重
             return _normalize(raw)
     raise llm.LlmError("模型两次都没写出合规的词族：" + "；".join(problems[:6]))
 
-
+# 从粘贴文本抽英文单词
 def parse_word_list(text: str) -> list[str]:
     """Pull the English words out of a pasted word book; separators and glosses are ignored."""
     out: list[str] = []
@@ -266,7 +267,7 @@ def _normalize_groups(raw: dict, pool: list[str]) -> dict:
     return {"groups": groups, "ungrouped": [w for w in pool if w not in covered],
             "total": len(pool)}
 
-
+# 把粘来的词表按词根分组（只分组，不落库）
 def group_words(text: str, max_families: int = 6) -> dict:
     """Split a pasted word list into root-based families, repairing once if validation fails."""
     pool = parse_word_list(text)
@@ -292,6 +293,6 @@ def _user_with_errors(user: str, problems: list[str]) -> str:
     return (user + "\n\n上一次输出有不合规的地方，请逐条修好，其他内容保持同等质量：\n"
             + "\n".join(f"- {p}" for p in problems[:12]))
 
-
+# 手动输入词根
 def store(fam: dict) -> Optional[int]:
     return repositories.add_family(fam, "agent")

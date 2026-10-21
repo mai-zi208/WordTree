@@ -1,4 +1,4 @@
-"""Route layer: model + key settings, persisted to backend/.env (git-ignored)."""
+"""设置面板的后端接口：配置模型，返回连接结果"""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -10,16 +10,17 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
 def _current() -> dict:
+    """返回配置值+是否已配key+打码key"""
     return {"baseUrl": config.DEEPSEEK_BASE_URL, "model": config.DEEPSEEK_MODEL,
             "imageProvider": config.IMAGE_PROVIDER, "configured": config.llm_ready(),
             "keyHint": config.masked_key()}
 
-
+# 回显当前模型配置
 @router.get("")
 def read() -> dict:
     return _current()
 
-
+# 写入新模型配置，可选顺带ping验证
 @router.put("")
 def write(body: schemas.SettingsRequest) -> dict:
     updates = {k: v for k, v in body.as_env().items() if v is not None}

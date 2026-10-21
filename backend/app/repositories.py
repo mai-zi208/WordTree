@@ -1,4 +1,4 @@
-"""Data layer: every SQL the app needs, no business rules here."""
+"""纯数据访问层：只封装SQL，不含业务规则（业务在routers/question_builder/scheduling里）"""
 from __future__ import annotations
 
 import json
@@ -15,16 +15,15 @@ JOINED_COLUMNS = ("words.id, words.family_id, words.word, words.pos, words.gloss
                   "words.blank, words.img, words.img_zh, words.position, "
                   "families.family, families.root, families.root_meaning")
 
-
+# 行结果转成dict列表
 def _rows(conn, sql: str, args: tuple = ()) -> list[dict]:
     return [dict(r) for r in conn.execute(sql, args).fetchall()]
-
 
 def _words(conn, family_id: int) -> list[dict]:
     return _rows(conn, f"SELECT {WORD_COLUMNS} FROM words WHERE family_id=? ORDER BY position",
                  (family_id,))
 
-
+# 查词族
 def list_families() -> list[dict]:
     with session() as conn:
         fams = _rows(conn, "SELECT id, family, root, root_meaning, intro, source, created_at "
@@ -33,7 +32,7 @@ def list_families() -> list[dict]:
             f["words"] = _words(conn, f["id"])
         return fams
 
-
+# 将单词填充进词族
 def get_family(family_id: int) -> Optional[dict]:
     with session() as conn:
         fams = _rows(conn, "SELECT id, family, root, root_meaning, intro, source, created_at "
@@ -43,7 +42,7 @@ def get_family(family_id: int) -> Optional[dict]:
         fams[0]["words"] = _words(conn, family_id)
         return fams[0]
 
-
+# 一次性取回所有单词及词根信息
 def all_words() -> list[dict]:
     """Every word with its family carried along, in family/position order."""
     with session() as conn:
@@ -51,7 +50,7 @@ def all_words() -> list[dict]:
                            "JOIN families ON families.id=words.family_id "
                            "ORDER BY words.family_id, words.position")
 
-
+# 按单词或按族查
 def get_word(word: str) -> Optional[dict]:
     with session() as conn:
         rows = _rows(conn, f"SELECT {WORD_COLUMNS} FROM words WHERE word=?", (word,))
@@ -62,7 +61,7 @@ def family_words(family_id: int) -> list[dict]:
     with session() as conn:
         return _words(conn, family_id)
 
-
+# 复习进度
 def reviews() -> dict[str, dict]:
     with session() as conn:
         return {r["word"]: {"stage": r["stage"], "next_date": r["next_date"], "wrong": r["wrong"]}
@@ -98,7 +97,7 @@ def rollback_family(family_id: int) -> None:
             "WHERE word IN (SELECT word FROM words WHERE family_id=?) AND stage>?",
             (stage, when, family_id, stage))
 
-
+# 写入一族单词
 def insert_family(conn, fam: dict, source: str) -> Optional[int]:
     """Write one family + its words on the caller's connection. None if the root exists."""
     root = fam["root"]
@@ -119,7 +118,7 @@ def insert_family(conn, fam: dict, source: str) -> Optional[int]:
              w.get("img"), w.get("img_zh", ""), position))
     return family_id
 
-
+# 添加单词
 def add_family(fam: dict, source: str) -> Optional[int]:
     with session() as conn:
         return insert_family(conn, fam, source)

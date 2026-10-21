@@ -171,8 +171,7 @@ function goSettings() {
 
         <template v-if="stage === 'input' || stage === 'failed'">
           <template v-if="mode === 'book'">
-            <p class="muted">把词本或课本单元的单词粘进来，一行一个、逗号隔开都行，中文释义可以留着。
-              智能体先按词根分组给你过目，勾选之后再逐族写联想和例句。</p>
+            <p class="muted">把词本或课本单元的单词粘进来，一行一个、逗号隔开都行，中文释义可以留着。</p>
             <textarea v-model="text" :disabled="running" spellcheck="false" aria-label="词本内容"
                       placeholder="inspect v. 检查&#10;respect n. 尊重&#10;prospect n. 前景&#10;spectator n. 观众&#10;perspective n. 视角"></textarea>
           </template>

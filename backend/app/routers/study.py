@@ -1,4 +1,4 @@
-"""Route layer: queues, ratings and scheduling commits."""
+"""路由层：负责复习、练习的闭环，构成"取题 → 答题打分 → 排下次复习"的完整学习流程"""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -7,14 +7,14 @@ from .. import question_builder, repositories, scheduling, schemas
 
 router = APIRouter(prefix="/api/study", tags=["study"])
 
-
+# 今日到期概览
 @router.get("/due")
 def due() -> dict:
     words = question_builder.due_words()
     return {"today": scheduling.today(), "count": len(words),
             "words": [w["word"] for w in words]}
 
-
+# 取一组题
 @router.post("/queue")
 def queue(body: schemas.QueueRequest) -> dict:
     if body.mode == "review":
@@ -38,7 +38,7 @@ def queue(body: schemas.QueueRequest) -> dict:
             "pool": body.pool if body.mode == "practice" else "due",
             "items": items}
 
-
+# 提交打分
 @router.post("/commit")
 def commit(body: schemas.CommitRequest) -> dict:
     scheduled, forgot = [], {}
@@ -73,7 +73,7 @@ def commit(body: schemas.CommitRequest) -> dict:
             "rolledBackRoots": [repositories.get_family(fid)["root"] for fid in rolled],
             "familyRoot": root, "nextDate": next_date}
 
-
+# 清空进度
 @router.delete("/progress")
 def reset() -> dict:
     repositories.reset_progress()

@@ -1,5 +1,4 @@
-"""Agent layer: runtime illustration. No image provider is configured in this
-environment, so generated families keep img=NULL and 看图解词 skips them."""
+"""智能体层：负责出图，但现在没有功能"""
 from __future__ import annotations
 
 from typing import Optional

@@ -1,15 +1,15 @@
-"""Row dicts -> JSON dicts, in the camelCase shape the frontend consumes."""
+"""是响应输出层(dict→camelCase JSON)，管出参。跟schemas.py是一对的"""
 from __future__ import annotations
 
 from typing import Optional
 
 from . import scheduling
 
-
+# 1、把DB存的图片相对路径转成根路径
 def as_url(rel: Optional[str]) -> Optional[str]:
     return "/" + rel.lstrip("/") if rel else None
 
-
+# 2、单词行变成前端词对象
 def word_json(row: dict) -> dict:
     return {
         "word": row["word"],
@@ -24,7 +24,7 @@ def word_json(row: dict) -> dict:
         "imgZh": row["img_zh"],
     }
 
-
+# 3、词族行变成族对象
 def family_json(row: dict) -> dict:
     words = [word_json(w) for w in row["words"]]
     return {
@@ -37,7 +37,7 @@ def family_json(row: dict) -> dict:
         "words": words,
     }
 
-
+# 4、学习进度摘要
 def family_state(row: dict, reviews: dict[str, dict]) -> dict:
     today = scheduling.today()
     names = [w["word"] for w in row["words"]]
@@ -52,6 +52,6 @@ def family_state(row: dict, reviews: dict[str, dict]) -> dict:
         "nextDate": nexts[0] if nexts else None,
     }
 
-
+# 5、把两个结果拼成一个对象
 def family_with_state(row: dict, reviews: dict[str, dict]) -> dict:
     return family_json(row) | family_state(row, reviews)
