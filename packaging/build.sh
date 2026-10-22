@@ -7,6 +7,10 @@ cd "$(dirname "$0")/.."
 PY=3.11                      # pyinstaller 对 3.14 的支持还没跟上，钉死一个能用的
 [ -d .venv-pack ] || uv venv --python "$PY" .venv-pack
 uv pip install --python .venv-pack -r backend/requirements.txt pyinstaller
+
+# 打进包里的词库是脱敏副本，不带你的复习记录
+.venv-pack/Scripts/python.exe packaging/make_starter.py
+
 .venv-pack/Scripts/pyinstaller.exe --noconfirm \
   --distpath packaging/dist --workpath packaging/build packaging/wordtree.spec
 

@@ -14,11 +14,13 @@ ROOT = Path(SPECPATH).resolve().parent
 BACKEND = ROOT / "backend"
 DIST = ROOT / "web" / "dist"
 ASSETS = ROOT / "assets"
-SEED_DB = BACKEND / "data" / "wordmemo.db"
+SEED_DB = Path(SPECPATH) / "starter" / "wordmemo.db"   # make_starter.py 生成的脱敏副本
 SEED_IMAGES = BACKEND / "data" / "images"
 
 if not DIST.is_dir():
     raise SystemExit("web/dist 不存在，先在 web/ 下 npm run build")
+if not SEED_DB.is_file():
+    raise SystemExit("packaging/starter/wordmemo.db 不存在，请走 packaging/build.sh（它会先生成脱敏副本）")
 
 datas = [
     (str(DIST), "web/dist"),                    # main.py 挂 / 用的是 config.RESOURCE_DIR/web/dist
@@ -26,7 +28,7 @@ datas = [
     (str(BACKEND / "app" / "seed_data.json"), "app"),   # config.SEED_FILE 指着的位置
 ]
 if SEED_DB.is_file():
-    datas.append((str(SEED_DB), "starter"))     # 首次运行由 launcher 复制到 exe 旁边
+    datas.append((str(SEED_DB), "starter"))     # 脱敏起始库，首次运行由 launcher 复制到 exe 旁边
 if SEED_IMAGES.is_dir():
     datas.append((str(SEED_IMAGES), "starter/images"))
 

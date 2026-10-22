@@ -78,6 +78,14 @@ def parse_env_file(path: Path = ENV_FILE) -> dict[str, str]:
 
 # 合并环境变量
 def effective_env() -> dict[str, str]:
+    """exe 只认自己旁边那份 .env；模型相关的键一律不看进程环境变量。
+
+    开发态照旧允许 shell 里的变量，方便临时换 key 调试。打包后如果还读环境变量，
+    分享给别人的 exe 会在那台机器恰好有同名变量时不做任何配置就能生成，
+    等于绕过了"使用者必须自己在设置页填一次"。
+    """
+    if FROZEN:
+        return parse_env_file()
     return {**_BASE_ENV, **parse_env_file()}
 
 # LLM参数保持后不刷新

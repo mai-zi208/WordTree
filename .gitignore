@@ -23,6 +23,7 @@ backend/data/
 .venv-pack/
 packaging/build/
 packaging/dist/
+packaging/starter/
 
 # 编辑器与系统
 .idea/

@@ -97,8 +97,8 @@ bash packaging/build.sh        # 产出 packaging/dist/WordTree.exe，约 52MB
 双击 `WordTree.exe`：**不弹任何窗口**，浏览器自动打开页面（默认 8000，被占就自动往后找空端口）。几点约定：
 
 - 打进包里的只有前端产物、手绘插画和一份起始词库，这些都是只读的。词库、生成的配图、`.env`（密钥）落在 **exe 旁边**的 `data/` 和 `.env`，首次启动才复制出来，之后只写不覆盖。
-- 起始词库就是打包当时 `backend/data/wordmemo.db` 的内容，**含你当前的学习记录**；不想带就删掉 spec 里 `starter` 那两行重打。
-- 密钥不进包：换到人手上是空配置，打开设置填 key 才有 AI 生成，所以发 exe 别捎上 `.env`。
+- 起始词库由 `packaging/make_starter.py` 从 `backend/data/wordmemo.db` 复制后**抹掉个人记录**（清空 `reviews`、`generation_jobs` 再 VACUUM），词表和手绘配图照常带上，你哪天复习过、评过哪档都不进包。想一个词都不带就删掉 spec 里 `starter` 那两行重打。
+- 密钥不进包，也不从环境变量偷读：打包版只认 **exe 旁边那份 `.env`**。对方机器上就算有 `DEEPSEEK_API_KEY` 也照样是空配置，必须在首页右上角设置里亲手填一次才有的 AI 生成（不填时 `/api/generate/*` 一律 503）。所以发 exe 别捎上 `.env`，也别把整个 `packaging/dist/` 目录发出去——那里面有你自己跑出来的 `data/`。
 - 退出：页面右下角「退出程序」。命令行方式跑的进程照旧 Ctrl+C，那个按钮只在 exe 里出现。
 - 重复双击不会叠服务：`data/wordtree.port` 记着当前实例的端口，探活成功就只多开一个标签页。
 - 出事先看 `data/wordtree.log`（每次启动覆盖），里面写着实际端口、数据目录和访问日志。
@@ -114,6 +114,7 @@ bash packaging/build.sh        # 产出 packaging/dist/WordTree.exe，约 52MB
 | 生成的一族被整族拒绝 | 校验拦的是形式：词根不是单词的子串、联想超 20 字、`blank` 不是该词的变形、例句里找不到 `blank`。预览卡片上写着具体原因 |
 | 换设备图没了 | 生成的图在 `backend/data/images/`，跟数据库一起被 git 忽略，本来就不跨设备 |
 | 双击 exe 浏览器没开 | exe 所在目录不可写（只读的 U 盘、`C:\Program Files`），`data/` 建不出来；换个能写的目录再双击，或看 `data/wordtree.log` |
+| 别人用 exe 能直接生成词族 | 你发的不是 `WordTree.exe` 一个文件，是整个 `packaging/dist/`——里面 `data/` 是你自己跑出来的库，`.env` 是你填的密钥。只发那一个 exe |
 
 ## 📖 使用示例
 
@@ -218,7 +219,7 @@ WordTree/
 │   ├── data/                     # SQLite + 生成的图片（整个目录被 git 忽略）
 │   └── app/
 │       ├── main.py               # FastAPI 入口：CORS、静态挂载、路由注册、启动清扫
-│       ├── config.py             # 进程环境 + .env 分层、热重载、密钥打码、打包时资源/数据分家
+│       ├── config.py             # 开发态「进程环境 + .env」两层，exe 只认旁边那份 .env；热重载、密钥打码、资源/数据分家
 │       ├── db.py                 # 建表、迁移兜底、连接（WAL）
 │       ├── repositories.py       # 纯 SQL，不含业务规则
 │       ├── scheduling.py         # 间隔重复：7 档间隔、四档自评、族级回退
@@ -231,8 +232,9 @@ WordTree/
 │       └── agents/               # llm.py（底层客户端）/ family_agent.py / image_agent.py
 ├── packaging/
 │   ├── launcher.py               # exe 入口：落词库、挑空端口、起 uvicorn、开浏览器
+│   ├── make_starter.py           # 起始词库导出：抹掉复习记录和暂存任务后 VACUUM
 │   ├── wordtree.spec             # PyInstaller 配置：打进前端产物/插画/起始词库，数据不进包
-│   └── build.sh                  # 建 .venv-pack → 装 pyinstaller → 产出 WordTree.exe
+│   └── build.sh                  # 建 .venv-pack → 装 pyinstaller → 导出起始词库 → 产出 WordTree.exe
 └── web/
     ├── vite.config.js            # 端口 5273/5274，代理 /api /assets /media
     ├── dist/                     # 构建产物（被 git 忽略）
