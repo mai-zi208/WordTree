@@ -3,6 +3,8 @@
 venv/
 .env
 .env.*
+# 模板可以进仓库，真密钥不行
+!.env.example
 
 # Python 缓存
 __pycache__/
