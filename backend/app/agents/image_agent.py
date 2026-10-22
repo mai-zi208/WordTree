@@ -13,8 +13,14 @@ from .. import config
 URL_PREFIX = "media"
 # 尺寸要用星号写，写成 1024x1024 会被拒；不给这个参数的话默认出 1024x1536 的竖图。
 SIZE = "1024*1024"
-STYLE = ("手绘水彩简笔画：淡彩上色，线条松弛，大片留白，一张图只画一件事，"
-         "不要写字、不要字母、不要水印、不要边框。")
+STYLE = "手绘水彩简笔画：淡彩上色，线条松弛，大片留白，一张图只画一件事，画面干净。"
+# 正向提示词里一个「不要」都不写：禁令词反而勾着模型把气泡、字母画出来，
+# 所有禁令都塞给 negative_prompt（接口实测收这个参数）。
+# 中文释义也不能进正向提示词：模型中文太强，会把「解码」这类词直接写到画面物件上。
+NEGATIVE = ("text, words, letters, characters, numbers, caption, subtitle, watermark, signature, "
+            "logo, label, tag, speech bubble, empty bubble, balloon, frame, border, "
+            "whiteboard, sticky note, paper with writing, "
+            "汉字, 中文, 文字, 词语, 标题")
 MAGIC = ((b"\x89PNG", "png"), (b"\xff\xd8", "jpg"), (b"RIFF", "webp"))
 SAFE_NAME = re.compile(r"[^a-z0-9_-]+")
 
@@ -24,9 +30,8 @@ class ImageError(RuntimeError):
 
 
 def build_prompt(word_row: dict) -> str:
-    """联想画面（meme）就是要画的内容，单词和释义只给模型一点上下文。"""
-    return (f"{word_row.get('meme', '')}。画面主角是「{word_row['word']}」"
-            f"（{word_row.get('gloss', '')}）。{STYLE}")
+    """联想画面（meme）本身就是完整场景，只画它，别的字一个都不给模型看。"""
+    return f"{word_row.get('meme', '')}。{STYLE}"
 
 
 def _explain(resp: httpx.Response) -> str:
@@ -80,7 +85,7 @@ def generate(word_row: dict) -> tuple[str, str]:
     payload = {"model": config.IMAGE_MODEL,
                "input": {"messages": [{"role": "user",
                                        "content": [{"text": build_prompt(word_row)}]}]},
-               "parameters": {"size": SIZE}}
+               "parameters": {"size": SIZE, "negative_prompt": NEGATIVE}}
     try:
         resp = httpx.post(config.image_endpoint(), json=payload,
                           headers={"Authorization": f"Bearer {config.DEEPSEEK_API_KEY}"},
