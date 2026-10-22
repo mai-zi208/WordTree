@@ -19,6 +19,11 @@ web/dist/
 # 本地数据库与运行时数据
 backend/data/
 
+# PyInstaller 产物与打包专用虚拟环境（几十 MB，不进仓库）
+.venv-pack/
+packaging/build/
+packaging/dist/
+
 # 编辑器与系统
 .idea/
 .vscode/

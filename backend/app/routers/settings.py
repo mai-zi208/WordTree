@@ -28,7 +28,7 @@ def write(body: schemas.SettingsRequest) -> dict:
     try:
         config.write_env(updates)
     except (ValueError, OSError) as exc:
-        raise HTTPException(400, f"写 backend/.env 失败：{exc}") from exc
+        raise HTTPException(400, f"写 {config.ENV_FILE} 失败：{exc}") from exc
     out = _current()
     if body.verify:
         if config.llm_ready():

@@ -33,3 +33,7 @@ export const fetchSettings = () => req("/api/settings");
 export const saveSettings = (payload) => put("/api/settings", payload);
 export const drawWord = (word) => post(`/api/images/word/${encodeURIComponent(word)}`);
 export const startFamilyImages = (familyId) => post(`/api/images/family/${familyId}`);
+export const fetchHealth = () => req("/api/health");
+// 退出请求必须带自定义头：后端靠它挡住别的网页顺手把你本机服务打死。
+export const shutdownApp = () =>
+  req("/api/shutdown", { method: "POST", headers: { "X-WordMemo-Shutdown": "1" } });

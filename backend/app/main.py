@@ -1,10 +1,12 @@
 """FastAPI 入口点：CORS、静态资源、路由、启动时的模式 + 初始化数据。"""
 from __future__ import annotations
 
+import os
+import threading
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -45,7 +47,18 @@ app.mount("/media", StaticFiles(directory=config.IMAGES_DIR), name="media")
 def health() -> dict:
     return {"ok": True, "db": str(config.DB_PATH), "llm": config.llm_ready(),
             "model": config.DEEPSEEK_MODEL, "imageProvider": config.IMAGE_PROVIDER,
-            "imageModel": config.IMAGE_MODEL, "imageReady": config.image_ready()}
+            "imageModel": config.IMAGE_MODEL, "imageReady": config.image_ready(),
+            "packaged": config.FROZEN}   # 前端靠这个决定给不给"退出程序"按钮
+
+
+# exe 版没有控制台窗口，退出入口只能做在页面上。
+# 要带自定义头才肯停：浏览器发跨源请求时这个头会触发预检，别的网页没法顺手把你本机服务打死。
+@app.post("/api/shutdown")
+def shutdown(x_wordmemo_shutdown: str = Header(None)) -> dict:
+    if x_wordmemo_shutdown != "1":
+        raise HTTPException(400, "退出请求缺确认头")
+    threading.Timer(0.6, lambda: os._exit(0)).start()   # 先把响应送回浏览器再散伙
+    return {"ok": True}
 
 # 进程入口
 def main() -> None:

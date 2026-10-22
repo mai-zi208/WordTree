@@ -1,19 +1,29 @@
-"""运行时配置：process env 是基础，backend/.env 是用户可编辑的层级。"""
+"""运行时配置：process env 是基础，.env 是用户可编辑的层级。"""
 
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 # 1、设置路径常量
-BACKEND_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = BACKEND_DIR.parent
-DATA_DIR = BACKEND_DIR / "data"   # SQLite数据库
+# 打包成 exe 时路径分两家：只读的资源在解包出来的临时目录里，可写的数据跟着 exe 走。
+# 没打包时保持原样——资源在项目根，数据在 backend/ 下。
+FROZEN = getattr(sys, "frozen", False)
+BACKEND_DIR = Path(__file__).resolve().parent.parent   # backend/
+if FROZEN:
+    RESOURCE_DIR = Path(sys._MEIPASS)                  # web/dist、assets 打进来的地方
+    STATE_DIR = Path(sys.executable).resolve().parent  # exe 所在目录，data/ 和 .env 都写这
+else:
+    RESOURCE_DIR = BACKEND_DIR.parent                  # 项目根
+    STATE_DIR = BACKEND_DIR
+
+DATA_DIR = STATE_DIR / "data"   # SQLite数据库
 IMAGES_DIR = DATA_DIR / "images"   # 智能体生成的插图，跟数据库一起被 git 忽略
-ASSETS_DIR = PROJECT_ROOT / "assets"   # 图片资源
-DIST_DIR = PROJECT_ROOT / "web" / "dist"   # 前端构建产物
+ASSETS_DIR = RESOURCE_DIR / "assets"   # 图片资源
+DIST_DIR = RESOURCE_DIR / "web" / "dist"   # 前端构建产物
 SEED_FILE = Path(__file__).resolve().parent / "seed_data.json"   # 种子数据
-ENV_FILE = BACKEND_DIR / ".env"
+ENV_FILE = STATE_DIR / ".env"
 
 # 启动时的进程环境快照。.env 覆盖它；有了快照，reload() 才不会把上一轮 .env 的值误当成进程环境。
 _BASE_ENV = dict(os.environ)

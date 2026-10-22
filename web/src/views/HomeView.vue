@@ -1,6 +1,7 @@
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import * as api from "../api";
 import GeneratePanel from "../components/GeneratePanel.vue";
 import HeroMasthead from "../components/HeroMasthead.vue";
 import SettingsPanel from "../components/SettingsPanel.vue";
@@ -10,6 +11,8 @@ import { loadFamilies, resetProgress, startSession, state } from "../store";
 const router = useRouter();
 const settingsOpen = ref(false);
 const generateOpen = ref(false);
+const packaged = ref(false);   // exe 版才给"退出程序"按钮：命令行跑的进程该自己停
+const stopped = ref(false);
 
 // 两个弹层互斥，同时开只会叠成一团。
 function toggleSettings() {
@@ -38,6 +41,25 @@ async function created(familyId) {
 async function clear() {
   if (confirm("清空所有复习进度？词库本身不会丢。")) await resetProgress();
 }
+
+onMounted(async () => {
+  try {
+    packaged.value = !!(await api.fetchHealth()).packaged;
+  } catch {
+    /* 连不上后端时别处已经在报错，这里不用再喊一遍 */
+  }
+});
+
+async function quit() {
+  if (!confirm("退出本机服务？退出后这个标签页就点不动了。")) return;
+  try {
+    await api.shutdownApp();
+    packaged.value = false;
+    stopped.value = true;
+  } catch (e) {
+    state.error = e.message;
+  }
+}
 </script>
 
 <template>
@@ -62,7 +84,9 @@ async function clear() {
     <div class="col">
       <div class="row">
         <button class="btn ghost" type="button" @click="clear">清空进度</button>
+        <button v-if="packaged" class="btn ghost" type="button" @click="quit">退出程序</button>
       </div>
+      <p v-if="stopped" class="muted">服务已停，这个标签页可以关了。想再用就重新双击 WordTree.exe。</p>
     </div>
   </main>
 
