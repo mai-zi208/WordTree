@@ -182,6 +182,14 @@ onBeforeUnmount(() => {
   window.removeEventListener("touchend", onTouchEnd);
 });
 
+// 三颗"开始"按钮（先学新词 / 只练到期 / 练习不熟）只差 pool 参数：
+// 队列要到了才跳答题页，没要到就把错误留在本页，别把用户带进一个空页面。
+async function start(pool) {
+  if (await startSession({ mode: "practice", familyId: family.value.id, pool })) {
+    router.push({ name: "quiz" });
+  }
+}
+
 // 画好一张就贴一张：直接改 store 里那个词对象，不用整库重拉。
 // familyId 是发起任务那一族，用户中途翻页也得把图贴回它自己的族。
 function applyImage(item, familyId) {
