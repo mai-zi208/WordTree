@@ -23,11 +23,12 @@ def _words(conn, family_id: int) -> list[dict]:
     return _rows(conn, f"SELECT {WORD_COLUMNS} FROM words WHERE family_id=? ORDER BY position",
                  (family_id,))
 
+FAMILY_COLUMNS = "id, family, root, root_meaning, intro, kind, source, created_at"
+
 # 查词族
 def list_families() -> list[dict]:
     with session() as conn:
-        fams = _rows(conn, "SELECT id, family, root, root_meaning, intro, source, created_at "
-                           "FROM families ORDER BY id")
+        fams = _rows(conn, f"SELECT {FAMILY_COLUMNS} FROM families ORDER BY id")
         for f in fams:
             f["words"] = _words(conn, f["id"])
         return fams
@@ -35,8 +36,7 @@ def list_families() -> list[dict]:
 # 将单词填充进词族
 def get_family(family_id: int) -> Optional[dict]:
     with session() as conn:
-        fams = _rows(conn, "SELECT id, family, root, root_meaning, intro, source, created_at "
-                           "FROM families WHERE id=?", (family_id,))
+        fams = _rows(conn, f"SELECT {FAMILY_COLUMNS} FROM families WHERE id=?", (family_id,))
         if not fams:
             return None
         fams[0]["words"] = _words(conn, family_id)
@@ -104,8 +104,10 @@ def insert_family(conn, fam: dict, source: str) -> Optional[int]:
     if conn.execute("SELECT 1 FROM families WHERE root=?", (root,)).fetchone():
         return None
     cur = conn.execute(
-        "INSERT INTO families(family, root, root_meaning, intro, source) VALUES(?,?,?,?,?)",
-        (fam.get("family") or root, root, fam["rootMeaning"], fam.get("intro", ""), source))
+        "INSERT INTO families(family, root, root_meaning, intro, kind, source) "
+        "VALUES(?,?,?,?,?,?)",
+        (fam.get("family") or root, root, fam["rootMeaning"], fam.get("intro", ""),
+         fam.get("kind", "root"), source))
     family_id = cur.lastrowid
     for position, w in enumerate(fam["words"]):
         content = w["content"]
@@ -184,3 +186,17 @@ def get_job(job_id: str) -> Optional[dict]:
                            "result_json, error, created_at, updated_at "
                            "FROM generation_jobs WHERE id=?", (job_id,))
         return rows[0] if rows else None
+
+
+def delete_job(job_id: str) -> None:
+    """丢掉一个生成任务：暂存在 result_json 里的词族内容随它一起消失，不进词库。"""
+    with session() as conn:
+        conn.execute("DELETE FROM generation_jobs WHERE id=?", (job_id,))
+
+
+def sweep_jobs(hours: int = 24) -> int:
+    """清掉超期的任务行。用户直接关浏览器时前端来不及丢弃暂存，靠这个兜底。"""
+    with session() as conn:
+        cur = conn.execute("DELETE FROM generation_jobs "
+                           "WHERE updated_at < datetime('now', ?)", (f"-{int(hours)} hours",))
+        return cur.rowcount

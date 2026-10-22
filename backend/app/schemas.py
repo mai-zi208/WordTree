@@ -39,10 +39,6 @@ class CommitRequest(Request):   #疲劳提交评分
     family_id: Optional[int] = None
 
 
-class GenerateRequest(Request):   #LLM生成词族
-    keyword: str = Field(min_length=1, max_length=40)
-    words: int = Field(default=5, ge=3, le=6)
-
 class SettingsRequest(Request):   #设置页保存
     """None 表示这一项不改；空字符串表示清掉。密钥只写进 backend/.env，不回传前端。"""
     base_url: Optional[str] = Field(default=None, max_length=200)
@@ -58,9 +54,15 @@ class GroupRequest(Request):   #文本归类词根
     text: str = Field(min_length=2, max_length=8000)
     max_families: int = Field(default=6, ge=1, le=12)
 
-class BatchGroup(Request):   # 批量归类
+class BatchGroup(Request):   # 分组结果里的一族，回传给后端去生成
+    """words 为空表示用户只给了一个词根，让模型自己挑常见词。"""
     root: str = Field(min_length=2, max_length=24)
-    words: list[str] = Field(min_length=1, max_length=12)
+    root_meaning: str = Field(default="", max_length=20)
+    kind: Literal["root", "theme"] = "root"
+    words: list[str] = Field(default_factory=list, max_length=12)
 
 class BatchRequest(Request):   # 批量归类
     groups: list[BatchGroup] = Field(min_length=1, max_length=8)
+
+class SaveRequest(Request):   # 预览完挑中的族，下标对着暂存结果的顺序
+    picks: list[int] = Field(default_factory=list, max_length=8)

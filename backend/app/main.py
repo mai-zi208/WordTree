@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from . import config, db, seed
+from . import config, db, repositories, seed
 from .routers import families, generation, settings, study
 
 
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     """启动时初始化"""
     db.init_db()
     seed.seed_if_empty()
+    repositories.sweep_jobs()   #没被确认入库的暂存词族，超期就清掉
     yield
 
 # app实例 + CORS

@@ -107,12 +107,17 @@ watch(() => props.families, async () => {
       class="note"
       :class="`s-${stage(f)}`"
       :style="noteStyle(i)"
-      :aria-label="`打开 ${f.root} 词族，${STAGE_LABEL[stage(f)]}，${f.total} 个词已学 ${f.learned} 个`"
+      :aria-label="f.kind === 'theme'
+        ? `打开主题「${f.rootMeaning}」，${STAGE_LABEL[stage(f)]}，${f.total} 个词已学 ${f.learned} 个`
+        : `打开 ${f.root} 词族，${STAGE_LABEL[stage(f)]}，${f.total} 个词已学 ${f.learned} 个`"
       @click="$emit('open', f.id)"
     >
       <span class="pin" :style="{ '--pin': NOTE_PIN[i % NOTE_PIN.length] }"></span>
       <span class="sheet">
-        <span class="root"><span lang="en">{{ f.root }}</span><span class="eq">=</span>{{ f.rootMeaning }}</span>
+        <span class="root">
+          <template v-if="f.kind === 'theme'"><span class="tag">主题</span>{{ f.rootMeaning }}</template>
+          <template v-else><span lang="en">{{ f.root }}</span><span class="eq">=</span>{{ f.rootMeaning }}</template>
+        </span>
         <span class="members">
           <span v-for="w in f.words" :key="w.word" lang="en">{{ w.word }}</span>
         </span>

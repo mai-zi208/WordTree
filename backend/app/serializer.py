@@ -33,6 +33,7 @@ def family_json(row: dict) -> dict:
         "root": row["root"],
         "rootMeaning": row["root_meaning"],
         "intro": row["intro"],
+        "kind": row.get("kind", "root"),
         "source": row["source"],
         "words": words,
     }

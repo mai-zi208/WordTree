@@ -45,8 +45,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 <template>
   <main v-if="family" class="enter">
     <div class="famhead">
-      <div class="kicker" lang="en">root · {{ family.family }}</div>
-      <div class="root" lang="en">{{ family.root }}<span class="eq">=</span>
+      <div class="kicker" lang="en">{{ family.kind === 'theme' ? 'theme' : 'root' }} · {{ family.family }}</div>
+      <div v-if="family.kind === 'theme'" class="root">
+        <span class="tag">主题</span><span class="zh">{{ family.rootMeaning }}</span></div>
+      <div v-else class="root" lang="en">{{ family.root }}<span class="eq">=</span>
         <span class="zh">{{ family.rootMeaning }}</span></div>
       <p class="intro">{{ family.intro }}</p>
       <div class="stats">
@@ -59,8 +61,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
     <h2>这一族的词</h2>
     <p class="muted note-lead">每行都带词根拆解，点一下展开联想、例句和简笔画。</p>
     <div class="wordlist">
-      <WordCard v-for="w in family.words" :key="w.word" :word="w" :root="family.root"
-                @zoom="zoomed = $event" />
+      <WordCard v-for="w in family.words" :key="w.word" :word="w"
+                :root="family.kind === 'theme' ? '' : family.root" @zoom="zoomed = $event" />
     </div>
 
     <div class="actionbar">

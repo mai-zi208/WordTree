@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS families (
   root         TEXT NOT NULL UNIQUE,
   root_meaning TEXT NOT NULL,
   intro        TEXT NOT NULL DEFAULT '',
+  kind         TEXT NOT NULL DEFAULT 'root',
   source       TEXT NOT NULL DEFAULT 'seed',
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -65,15 +66,22 @@ CREATE TABLE IF NOT EXISTS generation_jobs (
 
 
 # 2、迁移兜底
-# 老库里 generation_jobs 已经建好了，CREATE TABLE IF NOT EXISTS 不会补列，只能逐列 ALTER。
-JOB_COLUMNS = (("kind", "TEXT NOT NULL DEFAULT 'family'"), ("total", "INTEGER NOT NULL DEFAULT 0"),
-               ("done", "INTEGER NOT NULL DEFAULT 0"), ("result_json", "TEXT"))
+# 老库里的表已经建好了，CREATE TABLE IF NOT EXISTS 不会补列，只能逐列 ALTER。
+# kind 区分词根族和主题族：主题族是几个串不起词根的词按共同话题凑的一族。
+EXTRA_COLUMNS = {
+    "generation_jobs": (("kind", "TEXT NOT NULL DEFAULT 'family'"),
+                        ("total", "INTEGER NOT NULL DEFAULT 0"),
+                        ("done", "INTEGER NOT NULL DEFAULT 0"),
+                        ("result_json", "TEXT")),
+    "families": (("kind", "TEXT NOT NULL DEFAULT 'root'"),),
+}
 
 def _migrate(conn: sqlite3.Connection) -> None:
-    have = {r["name"] for r in conn.execute("PRAGMA table_info(generation_jobs)")}
-    for name, decl in JOB_COLUMNS:
-        if name not in have:
-            conn.execute(f"ALTER TABLE generation_jobs ADD COLUMN {name} {decl}")
+    for table, columns in EXTRA_COLUMNS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, decl in columns:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
 
 # 3、每个操作新建一个连接
