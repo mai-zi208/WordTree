@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 def _current() -> dict:
     """返回配置值+是否已配key+打码key"""
     return {"baseUrl": config.DEEPSEEK_BASE_URL, "model": config.DEEPSEEK_MODEL,
-            "imageProvider": config.IMAGE_PROVIDER, "configured": config.llm_ready(),
+            "imageProvider": config.IMAGE_PROVIDER, "imageModel": config.IMAGE_MODEL,
+            "imageReady": config.image_ready(), "configured": config.llm_ready(),
             "keyHint": config.masked_key()}
 
 # 回显当前模型配置

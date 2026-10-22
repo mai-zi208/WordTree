@@ -44,11 +44,15 @@ class SettingsRequest(Request):   #设置页保存
     base_url: Optional[str] = Field(default=None, max_length=200)
     model: Optional[str] = Field(default=None, max_length=80)
     api_key: Optional[str] = Field(default=None, max_length=300)
+    image_provider: Optional[Literal["none", "dashscope"]] = None
+    image_model: Optional[str] = Field(default=None, max_length=80)
     verify: bool = False
 
     def as_env(self) -> dict[str, Optional[str]]:
         return {"DEEPSEEK_BASE_URL": self.base_url, "DEEPSEEK_MODEL": self.model,
-                "DEEPSEEK_API_KEY": self.api_key}
+                "DEEPSEEK_API_KEY": self.api_key,
+                "WORDMEMO_IMAGE_PROVIDER": self.image_provider,
+                "WORDMEMO_IMAGE_MODEL": self.image_model}
 
 class GroupRequest(Request):   #文本归类词根
     text: str = Field(min_length=2, max_length=8000)

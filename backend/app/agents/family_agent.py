@@ -5,7 +5,7 @@ import re
 from typing import Any, Optional
 
 from .. import repositories
-from . import image_agent, llm
+from . import llm
 
 CONTENT_TYPES = {"sentence", "story", "passage"}
 MEME_MAX = 20
@@ -208,7 +208,6 @@ def _normalize(fam: dict, kind: str = "root") -> dict:
     }
     for i, w in enumerate(fam["words"]):
         content = _content(w)
-        img = image_agent.plan_image(w)
         out["words"].append({
             "word": str(w["word"]).lower(),
             "pos": str(w.get("pos", "")).strip(),
@@ -219,7 +218,8 @@ def _normalize(fam: dict, kind: str = "root") -> dict:
                         "zh": str(content["zh"]).strip()},
             "example": str(w["example"]).strip(),
             "blank": str(w["blank"]).strip(),
-            "img": img,
+            # 图不在这儿出：一族五个词就是五张图，等用户看过内容再按需点「配图」。
+            "img": None,
             "img_zh": "",
         })
     return out

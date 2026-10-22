@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from "node:url";
 import vue from "@vitejs/plugin-vue";
 
 const API = process.env.WORDMEMO_API || "http://127.0.0.1:8000";
-const proxy = { "/api": { target: API }, "/assets": { target: API } };
+const proxy = { "/api": { target: API }, "/assets": { target: API }, "/media": { target: API } };
 
 export default {
   plugins: [vue()],

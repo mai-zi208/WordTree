@@ -61,6 +61,13 @@ def family_words(family_id: int) -> list[dict]:
     with session() as conn:
         return _words(conn, family_id)
 
+
+def set_word_image(word: str, img: str, img_zh: str) -> bool:
+    """把一个词的插图写回库里。词不存在时返回 False，让调用方知道白画了。"""
+    with session() as conn:
+        cur = conn.execute("UPDATE words SET img=?, img_zh=? WHERE word=?", (img, img_zh, word))
+        return cur.rowcount > 0
+
 # 复习进度
 def reviews() -> dict[str, dict]:
     with session() as conn:

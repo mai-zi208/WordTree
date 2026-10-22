@@ -9,6 +9,7 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = BACKEND_DIR.parent
 DATA_DIR = BACKEND_DIR / "data"   # SQLite数据库
+IMAGES_DIR = DATA_DIR / "images"   # 智能体生成的插图，跟数据库一起被 git 忽略
 ASSETS_DIR = PROJECT_ROOT / "assets"   # 图片资源
 DIST_DIR = PROJECT_ROOT / "web" / "dist"   # 前端构建产物
 SEED_FILE = Path(__file__).resolve().parent / "seed_data.json"   # 种子数据
@@ -28,9 +29,12 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 LLM_TIMEOUT_S = float(os.getenv("WORDMEMO_LLM_TIMEOUT", "90"))
 
-# No image-provider key is present in this environment, so runtime illustration
-# generation stays disabled and families are stored with img=NULL.
+# 生图：dashscope 走千问/万相那一系的多模态接口，跟聊天共用同一把密钥和同一个域名。
+# none 表示不出图（比如密钥是 DeepSeek 的，它没有生图接口）。
 IMAGE_PROVIDER = os.getenv("WORDMEMO_IMAGE_PROVIDER", "none")
+IMAGE_MODEL = os.getenv("WORDMEMO_IMAGE_MODEL", "z-image-turbo")
+# 出图比聊天慢得多：turbo 一秒级，qwen-image-3.0 实测要一分钟，所以超时单给一个值。
+IMAGE_TIMEOUT_S = float(os.getenv("WORDMEMO_IMAGE_TIMEOUT", "180"))
 
 # 前端端口
 CORS_ORIGINS = [
@@ -45,7 +49,7 @@ CORS_ORIGINS = [
 
 # 设置页可改的键；顺序即 .env 里的书写顺序。
 EDITABLE_KEYS = ("DEEPSEEK_BASE_URL", "DEEPSEEK_MODEL", "DEEPSEEK_API_KEY",
-                 "WORDMEMO_IMAGE_PROVIDER")
+                 "WORDMEMO_IMAGE_PROVIDER", "WORDMEMO_IMAGE_MODEL")
 
 
 # 3、读写与热更新函数
@@ -69,13 +73,16 @@ def effective_env() -> dict[str, str]:
 # LLM参数保持后不刷新
 def reload() -> None:
     """Re-read env + .env into the settings the LLM layer reads at call time."""
-    global DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, LLM_TIMEOUT_S, IMAGE_PROVIDER
+    global DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, LLM_TIMEOUT_S
+    global IMAGE_PROVIDER, IMAGE_MODEL, IMAGE_TIMEOUT_S
     env = effective_env()
     DEEPSEEK_API_KEY = env.get("DEEPSEEK_API_KEY", "")
     DEEPSEEK_BASE_URL = env.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
     DEEPSEEK_MODEL = env.get("DEEPSEEK_MODEL", "deepseek-chat")
     LLM_TIMEOUT_S = float(env.get("WORDMEMO_LLM_TIMEOUT", "90"))
     IMAGE_PROVIDER = env.get("WORDMEMO_IMAGE_PROVIDER", "none")
+    IMAGE_MODEL = env.get("WORDMEMO_IMAGE_MODEL", "z-image-turbo")
+    IMAGE_TIMEOUT_S = float(env.get("WORDMEMO_IMAGE_TIMEOUT", "180"))
 
 # 环境变量写回.env
 def write_env(updates: dict[str, str]) -> None:
@@ -109,6 +116,21 @@ def masked_key() -> str:
 # 是否配置API Key
 def llm_ready() -> bool:
     return bool(DEEPSEEK_API_KEY)
+
+
+def image_ready() -> bool:
+    """生图和聊天共用一把密钥，所以只看开关开没开、密钥有没有。"""
+    return IMAGE_PROVIDER == "dashscope" and bool(DEEPSEEK_API_KEY)
+
+
+def image_endpoint() -> str:
+    """生图走原生 DashScope 路径，不是 /chat/completions，先把兼容模式的尾巴剪掉。"""
+    base = DEEPSEEK_BASE_URL.rstrip("/")
+    for suffix in ("/compatible-mode/v1", "/v1"):
+        if base.endswith(suffix):
+            base = base[: -len(suffix)]
+            break
+    return base + "/api/v1/services/aigc/multimodal-generation/generation"
 
 
 reload()

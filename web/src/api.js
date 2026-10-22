@@ -31,3 +31,5 @@ export const saveGenerated = (id, picks) => post(`/api/generate/${id}/save`, { p
 export const discardJob = (id) => req(`/api/generate/${id}`, { method: "DELETE" });
 export const fetchSettings = () => req("/api/settings");
 export const saveSettings = (payload) => put("/api/settings", payload);
+export const drawWord = (word) => post(`/api/images/word/${encodeURIComponent(word)}`);
+export const startFamilyImages = (familyId) => post(`/api/images/family/${familyId}`);

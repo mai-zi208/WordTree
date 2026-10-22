@@ -4,8 +4,9 @@ import { computed, ref } from "vue";
 const props = defineProps({
   word: { type: Object, required: true },
   root: { type: String, default: "" },
+  drawing: { type: Boolean, default: false },
 });
-const emit = defineEmits(["zoom"]);
+const emit = defineEmits(["zoom", "draw"]);
 
 const open = ref(false);
 
@@ -86,6 +87,10 @@ const isProse = computed(() => props.word.content.type !== "sentence");
         <img :src="word.img" width="1024" height="1024" loading="lazy" decoding="async"
              :alt="word.imgZh || word.word + ' 的简笔画'">
         <span class="cap">{{ word.imgZh ? word.imgZh + '　·　' : '' }}点图看大图</span>
+      </button>
+      <button v-else class="drawbtn" type="button" :disabled="drawing" @click="emit('draw')">
+        <span v-if="drawing" class="spinner" aria-hidden="true"></span>
+        {{ drawing ? "正在画，几秒钟……" : "照上面的联想画一张图" }}
       </button>
     </div>
   </div>

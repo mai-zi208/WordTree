@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import config, db, repositories, seed
-from .routers import families, generation, settings, study
+from .routers import families, generation, images, settings, study
 
 
 @asynccontextmanager
@@ -25,21 +25,27 @@ app = FastAPI(title="WordMemo API", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS,
                    allow_methods=["*"], allow_headers=["*"])
 
-# 注册四个路由
+# 注册五个路由
 app.include_router(families.router)
 app.include_router(study.router)
 app.include_router(generation.router)
+app.include_router(images.router)
 app.include_router(settings.router)
 
 # 挂载静态资源
 if config.ASSETS_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=config.ASSETS_DIR), name="assets")
 
+# 智能体画的图放在 git 忽略的 data/images 里，单独挂一位，不跟种子插画混在一起。
+config.IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=config.IMAGES_DIR), name="media")
+
 # 健康检查
 @app.get("/api/health")
 def health() -> dict:
     return {"ok": True, "db": str(config.DB_PATH), "llm": config.llm_ready(),
-            "model": config.DEEPSEEK_MODEL, "imageProvider": config.IMAGE_PROVIDER}
+            "model": config.DEEPSEEK_MODEL, "imageProvider": config.IMAGE_PROVIDER,
+            "imageModel": config.IMAGE_MODEL, "imageReady": config.image_ready()}
 
 # 进程入口
 def main() -> None:
