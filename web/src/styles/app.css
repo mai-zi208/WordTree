@@ -48,7 +48,7 @@
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overscroll-behavior-x:none}
 body{
   margin:0;background:var(--bg);color:var(--ink);
   font:16px/1.65 var(--f-body);
@@ -126,36 +126,48 @@ h2{font-size:12px;margin:var(--s6) 0 var(--s3);color:var(--dim);font-weight:700;
 .tip .due-n{font:700 22px/1 var(--f-display);color:var(--accent-ink);margin-right:2px}
 .tip.idle{color:var(--dim)}
 
-/* 便签墙：每行 4 张，蛇形排列（组件里用 grid 定位折返），藤蔓一笔连到底。 */
-.wall{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:22px 18px;
-  padding:var(--s5) 0 10px}
-.string{position:absolute;left:0;top:0;pointer-events:none;z-index:0}
-.string path{fill:none;stroke:var(--line-2);stroke-width:1.6;stroke-dasharray:7 5;stroke-linecap:round}
+/* 便签墙：一行一张，卡片左上角一只金属环扣，全体挂在左边那根竖线上。
+   线走卡片背后，只从环扣的孔里露出来，看着就是穿过去的。
+   排序（没学过排前面、学过的排后面）在 store 的 wallOrder 里，词族页翻页共用同一个顺序。 */
+.wall{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:18px;
+  max-width:660px;margin:0 auto;padding:var(--s4) 10px 10px 12px}
+.wall::before{content:"";position:absolute;left:30px;top:0;bottom:0;width:2px;
+  background:linear-gradient(to bottom,transparent,var(--line-2) 3% 97%,transparent)}
+/* 歪斜绕着环扣转，所以是吊着的纸，不是平行错位的格子。
+   卡宽跟着内容收（五个词排一行要多宽就多宽），顶到 100% 才让单词换行，不硬撑满一行。 */
 .wall .note{position:relative;z-index:1;display:block;margin:0;padding:0;text-align:left;
-  transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--rot,0deg));
-  transition:transform var(--dur-2) var(--ease),box-shadow var(--dur-2) var(--ease)}
-/* 倾斜角度和偏移都由组件按卡片序号给（--rot/--dx/--dy），这里只管把它们组合起来。
-   卡片又窄又高，角度太大外接框会横向胀出去吃掉缝隙，所以压在 1.5° 以内。 */
-.wall .note:hover{transform:translate(var(--dx,0px),calc(var(--dy,0px) - 3px)) rotate(0deg) scale(1.02);
-  box-shadow:var(--sh-note-hover);z-index:2}
-.wall .note:active{transform:translate(var(--dx,0px),var(--dy,0px)) rotate(0deg) scale(.97)}
-.pin{position:absolute;left:5px;top:11px;width:9px;height:9px;border-radius:50%;z-index:2;
-  background:radial-gradient(circle at 34% 30%,#fff9 0 34%,transparent 38%),var(--pin,#a4472f);
-  box-shadow:0 1px 2px rgba(0,0,0,.28),inset 0 -1px 1px rgba(0,0,0,.18)}
+  width:max-content;max-width:100%;
+  transform:rotate(var(--rot,0deg));transform-origin:19px 15px;
+  transition:transform var(--dur-2) var(--ease)}
+.wall .note:hover{transform:rotate(0deg) translateY(-2px);z-index:2}
+.wall .note:active{transform:rotate(0deg) scale(.995)}
+/* 环扣中间必须挖空，背后的线才露得出来；投影用 filter，
+   box-shadow 会被 mask 连着裁掉。 */
+.wall .note::before{content:"";position:absolute;left:8px;top:4px;width:22px;height:22px;z-index:2;
+  border-radius:50%;background:linear-gradient(145deg,#f4f6f8,#a5aab2 40%,#e9ecf0 62%,#8b9198);
+  -webkit-mask:radial-gradient(circle closest-side,transparent 71%,#000 73%);
+          mask:radial-gradient(circle closest-side,transparent 71%,#000 73%);
+  filter:drop-shadow(0 1px 1px rgba(40,34,18,.4))}
 .sheet{position:relative;display:flex;flex-direction:column;height:100%;border-radius:3px;
-  padding:7px 7px 6px 18px;border:1px solid var(--st-fresh-line);background:var(--st-fresh);
-  box-shadow:var(--sh-note);
-  -webkit-mask:radial-gradient(circle at 9.5px 15.5px,transparent 0 4.5px,#000 5px);
-  mask:radial-gradient(circle at 9.5px 15.5px,transparent 0 4.5px,#000 5px)}
+  padding:7px 10px 7px 36px;border:1px solid var(--st-fresh-line);background:var(--st-fresh);
+  /* 纸跟着环扣的位置打孔，孔比金属圈内径小一点，纸边藏在金属底下。 */
+  -webkit-mask:radial-gradient(circle at 19px 15px,transparent 0 6px,#000 7px);
+          mask:radial-gradient(circle at 19px 15px,transparent 0 6px,#000 7px);
+  filter:drop-shadow(0 4px 8px rgba(52,44,24,.14));
+  transition:filter var(--dur-2) var(--ease)}
+.wall .note:hover .sheet{filter:drop-shadow(0 7px 14px rgba(52,44,24,.2))}
 .s-part .sheet{background:var(--st-part);border-color:var(--st-part-line)}
 .s-done .sheet{background:var(--st-done);border-color:var(--st-done-line)}
 .wall .root{font:600 16px/1.25 var(--f-display);letter-spacing:0;color:var(--ink);overflow-wrap:anywhere}
 .wall .root .eq{font-family:var(--f-body);font-weight:600;font-size:12px;color:var(--dim);margin:0 3px}
 .wall .root .tag{font-family:var(--f-body);font-weight:600;font-size:11px;color:var(--dim);margin-right:4px}
-.wall .members{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
-.wall .members span{max-width:100%;padding:3px 6px;border-radius:var(--r-pill);
-  font:600 10.5px/1.3 var(--f-read);color:var(--ink-2);background:rgba(255,255,255,.62);
-  border:1px solid rgba(0,0,0,.07);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 一行一张之后卡片是横的，单词排成会换行的一串，窄屏自己收成两三行。 */
+.wall .members{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:7px}
+.wall .members span{position:relative;display:block;padding-left:9px;max-width:100%;
+  font:500 12px/1.55 var(--f-read);color:var(--ink-2);
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.wall .members span::before{content:"";position:absolute;left:0;top:.62em;width:3px;height:3px;
+  border-radius:50%;background:currentColor;opacity:.32}
 .wall .meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 5px;margin-top:auto;padding-top:8px;
   font-size:10.5px;line-height:1.45;color:var(--dim)}
 .stages{display:flex;gap:2px;width:100%}
@@ -169,7 +181,8 @@ h2{font-size:12px;margin:var(--s6) 0 var(--s3);color:var(--dim);font-weight:700;
 .famhead{position:relative;overflow:hidden;background:var(--paper);border:1px solid var(--line);
   border-radius:var(--r);padding:var(--s5) var(--s4) var(--s4);box-shadow:var(--sh-1);margin-top:var(--s5)}
 .famhead::before{content:"";position:absolute;inset:0 0 auto;height:5px;background:var(--accent)}
-.famhead .kicker{font-size:11.5px;font-weight:700;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.famhead .kicker{font-size:11.5px;font-weight:700;letter-spacing:.16em;color:var(--dim);
+  text-transform:uppercase;padding-right:138px}
 .famhead .root{font:600 34px/1.15 var(--f-display);margin:6px 0 2px;letter-spacing:-.3px}
 .famhead .root .eq{font-family:var(--f-body);font-weight:600;color:var(--dim);font-size:24px;margin:0 6px}
 .famhead .root .tag{font-family:var(--f-body);font-weight:700;font-size:14px;color:var(--dim);
@@ -179,6 +192,11 @@ h2{font-size:12px;margin:var(--s6) 0 var(--s3);color:var(--dim);font-weight:700;
 .famhead .stats{display:flex;gap:var(--s4);margin-top:var(--s4);padding-top:var(--s3);
   border-top:1px dashed var(--line-2);font-size:13.5px;color:var(--dim);flex-wrap:wrap}
 .famhead .stats b{display:block;font:700 19px/1.2 var(--f-display);color:var(--accent-ink)}
+/* 词族页的翻页控件：必须 absolute，占一像素页高就会把"滚到底"的判定挪走。
+   贴在眉标那一行的行尾，让位靠眉标的 padding-right，挤出来只是卡片内部多一行。 */
+.famnav{position:absolute;top:10px;right:14px;z-index:2;display:flex;align-items:center;gap:6px}
+.famnav .backbtn{width:36px;padding:0;justify-content:center}
+.famnav .count{font:600 13px/1 var(--f-display);color:var(--dim);font-variant-numeric:tabular-nums}
 
 .tree .rootbox{text-align:center;padding:10px var(--s3);border-radius:var(--r-sm);
   border:1.5px dashed var(--accent-line);background:var(--accent-soft);
@@ -243,6 +261,18 @@ h2{font-size:12px;margin:var(--s6) 0 var(--s3);color:var(--dim);font-weight:700;
 .actionbar .row{margin-top:0}
 .actionbar .row .btn{min-height:38px;padding:8px 10px;font-size:14px}
 .actionbar .check{margin-top:0;flex:1 1 100%;justify-content:center}
+/* 滚轮的"再推一下"回显：吸底栏是 sticky，所以它贴视口底，提示挂在它上面永远在屏里，
+   而且 absolute 不给文档加高。只在甩动那两三百毫秒里出现，不会长期盖住内容。 */
+.peek{position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:5px;pointer-events:none;
+  padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--accent-ink);background:var(--paper);
+  border:1px solid var(--accent-line);border-radius:var(--r-pill);box-shadow:var(--sh-2);
+  opacity:0;transition:opacity var(--dur-1) var(--ease)}
+.peek.on{opacity:1}
+.peek i{display:block;width:56px;height:3px;border-radius:var(--r-pill);
+  background:var(--line-2);overflow:hidden}
+.peek i::after{content:"";display:block;height:100%;background:var(--accent);
+  width:calc(var(--p,0) * 100%)}
 .meme{display:flex;gap:var(--s2);align-items:flex-start;background:var(--warn-soft);
   border:1px solid var(--warn-line);border-left:3px solid var(--warn-bright);
   border-radius:var(--r-xs);padding:10px var(--s3);font-size:14.5px;margin:var(--s3) 0;
@@ -418,8 +448,8 @@ h2{font-size:12px;margin:var(--s6) 0 var(--s3);color:var(--dim);font-weight:700;
 @media (prefers-color-scheme: dark){
   .platebtn,.quizimg,.lightbox figure{background:#efece2;border-color:#5a5c4e}
   .platebtn img,.lightbox img{background:#f4f1e8}
-  .pin{box-shadow:0 1px 2px rgba(0,0,0,.6),inset 0 -1px 1px rgba(0,0,0,.35)}
-  .wall .members span{background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.12)}
+  .wall .note::before{filter:drop-shadow(0 1px 2px rgba(0,0,0,.75))}
+  .sheet{filter:drop-shadow(0 4px 9px rgba(0,0,0,.5))}
 }
 
 @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
@@ -431,5 +461,4 @@ h2{font-size:12px;margin:var(--s6) 0 var(--s3);color:var(--dim);font-weight:700;
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
     transition-duration:.01ms!important;scroll-behavior:auto!important}
-  .wall .note{transform:translate(var(--dx,0px),var(--dy,0px))}
 }

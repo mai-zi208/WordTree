@@ -22,6 +22,19 @@ export function familyById(id) {
   return state.families.find((f) => f.id === Number(id)) || null;
 }
 
+// 便签墙和词族页翻页共用这一个顺序：没学过的排前面，学过的排后面，
+// 组内保持接口给的 id 升序（sort 是稳定的）。两边不一致的话「下一族」就不是墙上的下一张。
+export function wallOrder(list) {
+  return [...list].sort((a, b) => (a.learned ? 1 : 0) - (b.learned ? 1 : 0));
+}
+
+// 取墙上相邻的一族。按 wallOrder 的下标取，不按 id±1：智能体生成的族被拒过就会跳号。
+export function neighborFamily(id, dir) {
+  const order = wallOrder(state.families);
+  const i = order.findIndex((f) => f.id === Number(id));
+  return i < 0 ? null : order[i + dir] || null;
+}
+
 export async function loadFamilies() {
   try {
     const data = await api.fetchFamilies();
